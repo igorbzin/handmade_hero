@@ -10,9 +10,12 @@ output_executable="handmade"
 echo "Beginning build process.."
 mkdir build
 pushd build
+
+rm -f $output_executable
+
 #
 # Find all .swift files and compile them into a single executable
-find . -name "*.swift" -print0 | xargs -0 swiftc -o "$output_executable"
+find ../code/ -name "*.swift" -print0 | xargs -0 swiftc -o "$output_executable"
 
 # Check if the compilation was successful
 if [ -f "$output_executable" ]; then

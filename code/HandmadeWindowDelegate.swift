@@ -11,9 +11,15 @@ protocol HandmadeWindowDelegate: NSWindowDelegate {}
 
 class HandmadeWindowDelegateImpl: NSObject, HandmadeWindowDelegate {
     var onWindowWillClose: () -> Void?
+    var onWindowDidResize: () -> Void?
 
-    init(onWindowWillClose: @escaping () -> Void?) {
+    init(onWindowDidResize: @escaping () -> Void?, onWindowWillClose : @escaping () -> Void?) {
+        self.onWindowDidResize = onWindowDidResize
         self.onWindowWillClose = onWindowWillClose
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        onWindowDidResize()
     }
 
     func windowWillClose(_ notification: Notification) {
