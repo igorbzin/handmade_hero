@@ -1,4 +1,3 @@
-
 //
 //  main.swift
 //  hand_made
@@ -8,8 +7,10 @@
 
 import AppKit
 
-enum App {
-    static func main() {
+public enum App
+{
+    public static func main()
+    {
         var running = false
 
         let globalRenderingWidth: Double = 1024
@@ -23,7 +24,9 @@ enum App {
         let content: NSRect = .init(x: x, y: y, width: globalRenderingWidth, height: globalRenderingHeight)
         let window: NSWindow = .init(contentRect: content,
                                      styleMask: NSWindow.StyleMask.titled.union(
-                                        NSWindow.StyleMask.closable.union(NSWindow.StyleMask.resizable.union(NSWindow.StyleMask.miniaturizable))
+                                         NSWindow.StyleMask.closable.union(
+                                             NSWindow.StyleMask.resizable.union(NSWindow.StyleMask.miniaturizable)
+                                         )
                                      ),
                                      backing: NSWindow.BackingStoreType.buffered,
                                      defer: false)
@@ -32,15 +35,46 @@ enum App {
         window.title = "Handmade Hero"
         window.makeKeyAndOrderFront(nil)
 
-        var bitmapWidth = window.contentView?.frame.width ?? 0.0
-        var bitmapHeight = window.contentView?.frame.height ?? 0.0
+        var bitmapWidth: Int
+        var bitmapHeight: Int
 
-        let handmadeWindowDelegate: HandmadeWindowDelegate = HandmadeWindowDelegateImpl(onWindowDidResize: {
-            bitmapWidth = window.contentView?.frame.width ?? 0.0
-            bitmapHeight = window.contentView?.frame.height ?? 0.0
+        if let width = window.contentView?.frame.width
+        {
+            bitmapWidth = Int(width)
+        } else
+        {
+            bitmapWidth = 0
+        }
 
-            resizeDIBSection(width: bitmapWidth, height: bitmapHeight)
-        }) {
+        if let height = window.contentView?.frame.height
+        {
+            bitmapHeight = Int(height)
+        } else
+        {
+            bitmapHeight = 0
+        }
+        let handmadeWindowDelegate: HandmadeWindowDelegate = HandmadeWindowDelegateImpl(onWindowDidResize: { [weak window] in
+            guard let window = window else { return }
+
+            if let width = window.contentView?.frame.width
+            {
+                bitmapWidth = Int(width)
+            } else
+            {
+                bitmapWidth = 0
+            }
+
+            if let height = window.contentView?.frame.height
+            {
+                bitmapHeight = Int(height)
+            } else
+            {
+                bitmapHeight = 0
+            }
+
+            resizeDIBSection(window: window, width: bitmapWidth, height: bitmapHeight)
+        })
+        {
             running = false
             print("Window is about to close")
         }
@@ -48,13 +82,29 @@ enum App {
         window.delegate = handmadeWindowDelegate
 
         let bytesPerPixel = 4
-        let pitch = Int((CGFloat(bytesPerPixel) * bitmapWidth).rounded())
+        let pitch = bytesPerPixel * bitmapWidth
 
-        let bufferSize = Int((CGFloat(pitch) * bitmapHeight).rounded())
-        var buffer = [UInt8]()
-        buffer.reserveCapacity(bufferSize)
+        let bufferSize = pitch * bitmapHeight
+        var buffer = [UInt8](repeating: 0, count: bufferSize) // Initialize the buffer with zeros
 
-        var planes: [[UInt8]] = [buffer]
+        let rowsToModify = bitmapHeight / 2
+
+        // Iterate over the upper half of the bitmap
+        for y in 0 ..< rowsToModify
+        {
+            for x in 0 ..< bitmapWidth
+            {
+                // Calculate the index for the red component of the current pixel
+                // The pitch accounts for the total number of bytes per row in the bitmap
+                let redIndex = y * pitch + x * bytesPerPixel
+
+                // Set the pixel's color to fully opaque red (R=255, G=0, B=0, A=255)
+                buffer[redIndex] = 255 // R
+                buffer[redIndex + 1] = 0 // G
+                buffer[redIndex + 2] = 0 // B
+                buffer[redIndex + 3] = 255 // A (alpha component set to fully opaque)
+            }
+        }
 
         let red: UInt8 = 255
         let blue: UInt8 = 0
@@ -63,9 +113,12 @@ enum App {
 
         running = true
 
-        while running {
-            autoreleasepool {
-                buffer.withUnsafeMutableBytes { rawBufferPointer in
+        while running
+        {
+            autoreleasepool
+            {
+                buffer.withUnsafeMutableBytes
+                { rawBufferPointer in
                     // Ensure we have a base address to work with
                     guard let baseAddress = rawBufferPointer.baseAddress else { return }
 
@@ -77,8 +130,8 @@ enum App {
 
                     // Pass the address of planes to the initializer
                     let bitmapImageRep = NSBitmapImageRep(bitmapDataPlanes: &planes,
-                                                          pixelsWide: Int(bitmapWidth),
-                                                          pixelsHigh: Int(bitmapHeight), 
+                                                          pixelsWide: bitmapWidth,
+                                                          pixelsHigh: bitmapHeight,
                                                           bitsPerSample: 8,
                                                           samplesPerPixel: bytesPerPixel,
                                                           hasAlpha: true,
@@ -87,28 +140,33 @@ enum App {
                                                           bytesPerRow: pitch,
                                                           bitsPerPixel: 32)
 
-                    let image = NSImage(size: NSMakeSize(bitmapWidth, bitmapHeight))
+                    let image = NSImage(size: NSMakeSize(CGFloat(bitmapWidth), CGFloat(bitmapHeight)))
 
-                    if let unwrapped = bitmapImageRep {
+                    if let unwrapped = bitmapImageRep
+                    {
                         image.addRepresentation(unwrapped)
                         window.contentView?.layer?.contents = image
-                    } else {
+                    } else
+                    {
                         print("BitmapImageRep is nil")
                     }
                 }
             }
 
             var event: NSEvent?
-            repeat {
+            repeat
+            {
                 event = NSApp.nextEvent(matching: .any,
                                         until: nil,
                                         inMode: .default,
                                         dequeue: true)
 
-                switch event?.type {
+                switch event?.type
+                {
                 // ... (some cases might handle specific event types)
                 default:
-                    if let validEvent = event {
+                    if let validEvent = event
+                    {
                         NSApp.sendEvent(validEvent)
                     }
                 }
@@ -116,10 +174,7 @@ enum App {
         }
     }
 
-
-    func resizeDIBSection(window: NSWindow, width _: CGFloat?, height _: CGFloat?) {
-        
-    }
+    static func resizeDIBSection(window _: NSWindow, width _: Int?, height _: Int?) {}
 }
 
 App.main()
